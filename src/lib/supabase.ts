@@ -38,3 +38,15 @@ export interface BETRecord {
   created_at: string;
   updated_at: string;
 }
+
+export interface ChargingLog {
+  id: string;
+  equipment_id: string;
+  user_id: string;
+  location_id: string;
+  start_time: string;
+  end_time: string | null;
+  duration_minutes: number | null;
+  created_at: string;
+  updated_at: string;
+}

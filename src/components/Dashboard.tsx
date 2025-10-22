@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Location, BETRecord } from '../lib/supabase';
-import { LogOut, Plus, Search, Filter, Plane, MapPin, AlertCircle, CheckCircle, Wrench } from 'lucide-react';
+import { Plus, Search, Filter, Plane, MapPin, AlertCircle, CheckCircle, Wrench, BatteryCharging, LogOut } from 'lucide-react';
 import BETRecordForm from './BETRecordForm';
 import UserManagement from './UserManagement';
+import ChargingRecordsTable from './ChargingRecordsTable';
 
 export default function Dashboard() {
   const { profile, signOut } = useAuth();
@@ -14,7 +15,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState<BETRecord | null>(null);
-  const [activeTab, setActiveTab] = useState<'records' | 'users'>('records');
+  const [activeTab, setActiveTab] = useState<'records' | 'users' | 'charging'>('records');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -174,12 +175,24 @@ export default function Dashboard() {
               >
                 {profile?.role === 'admin' ? 'Create User' : 'User Management'}
               </button>
+              <button
+                onClick={() => setActiveTab('charging')}
+                className={`px-4 py-2 font-medium text-sm transition-colors ${
+                  activeTab === 'charging'
+                    ? 'border-b-2 border-purple-600 text-purple-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Charging Control
+              </button>
             </div>
           </div>
         )}
 
         {activeTab === 'users' ? (
           <UserManagement locations={locations} />
+        ) : activeTab === 'charging' ? (
+          <ChargingRecordsTable locations={locations} />
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

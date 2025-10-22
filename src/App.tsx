@@ -1,7 +1,7 @@
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
-import UserControl from './components/UserControl';
+import UserDashboard from './components/UserDashboard';
 
 function AppContent() {
   const { user, profile, loading } = useAuth();
@@ -22,11 +22,15 @@ function AppContent() {
   }
 
   // Role-based redirection
-  if (profile.role === 'user') {
-    return <UserControl />;
+  switch (profile.role) {
+    case 'user':
+      return <UserDashboard />;
+    case 'admin':
+    case 'super_admin':
+      return <Dashboard />;
+    default:
+      return <div className="text-center text-red-600 p-4">Invalid role</div>;
   }
-
-  return <Dashboard />;
 }
 
 function App() {
