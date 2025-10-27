@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Location, BETRecord } from '../lib/supabase';
-import { Plus, Search, Filter, Plane, MapPin, AlertCircle, CheckCircle, Wrench, BatteryCharging, LogOut } from 'lucide-react';
+import { Plus, Search, Filter, Plane, MapPin, AlertCircle, CheckCircle, Wrench, LogOut } from 'lucide-react';
 import BETRecordForm from './BETRecordForm';
 import UserManagement from './UserManagement';
 import ChargingRecordsTable from './ChargingRecordsTable';

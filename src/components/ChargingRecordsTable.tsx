@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, ChargingLog, Location } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, MapPin, Filter, Clock } from 'lucide-react';
+import { Search, MapPin, Clock } from 'lucide-react';
 
 interface ChargingRecordsTableProps {
   locations: Location[];

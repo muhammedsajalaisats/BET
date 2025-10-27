@@ -1,20 +1,29 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Plane, Power, StopCircle, HistoryIcon } from 'lucide-react';
+import { LogOut, Plane, Power, StopCircle, AlertCircle, History as HistoryIcon } from 'lucide-react';
 import { supabase, BETRecord, ChargingLog } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import queryString from 'query-string';
+
+interface Equipment extends BETRecord {
+  id: string;
+}
 
 export default function UserDashboard() {
   const { profile, signOut } = useAuth();
-  const [equipment, setEquipment] = useState<BETRecord[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<BETRecord | null>(null);
   const [currentLog, setCurrentLog] = useState<ChargingLog | null>(null);
-  const [logs, setLogs] = useState<ChargingLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [logs, setLogs] = useState<ChargingLog[]>([]);
 
+  // Parse query parameters and handle equipment selection
   useEffect(() => {
-    fetchEquipment();
-  }, []);
+    const params = queryString.parse(window.location.search);
+    const equipmentNo = params.EquipmentNo as string;
+    
+    fetchEquipment(equipmentNo);
+  }, [window.location.search]);
 
   useEffect(() => {
     if (selectedEquipment) {
@@ -45,23 +54,56 @@ export default function UserDashboard() {
     }
   }, [selectedEquipment?.id]);
 
-  const fetchEquipment = async () => {
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAllEquipment = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
+        .from('bet_records')
+        .select('*')
+        .eq('location_id', profile?.location_id);
+
+      if (fetchError) throw fetchError;
+      setEquipment(data || []);
+    } catch (error) {
+      console.error('Error fetching all equipment:', error);
+      setError('Failed to fetch equipment list');
+    }
+  };
+
+  useEffect(() => {
+    fetchAllEquipment();
+  }, [profile?.location_id]);
+
+  const fetchEquipment = async (equipmentNo?: string) => {
+    if (!equipmentNo) {
+      setQueryError('Equipment number is required');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error: fetchError } = await supabase
         .from('bet_records')
         .select('*')
         .eq('location_id', profile?.location_id)
         .eq('status', 'operational')
-        .order('equipment_id');
+        .eq('equipment_id', equipmentNo)
+        .maybeSingle();
 
-      if (error) throw error;
-      setEquipment(data || []);
-      // Auto-select first equipment if available
-      if (data && data.length > 0 && !selectedEquipment) {
-        setSelectedEquipment(data[0]);
+      if (fetchError) throw fetchError;
+
+      if (!data) {
+        setQueryError(`Equipment ${equipmentNo} not found or not accessible`);
+        setSelectedEquipment(null);
+      } else {
+        setSelectedEquipment(data);
+        setQueryError(null);
       }
     } catch (error) {
       console.error('Error fetching equipment:', error);
+      setQueryError('Failed to fetch equipment');
+      setSelectedEquipment(null);
     } finally {
       setLoading(false);
     }
@@ -178,26 +220,45 @@ export default function UserDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-3xl mx-auto">
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Equipment
-            </label>
-            <select
-              value={selectedEquipment?.id || ''}
-              onChange={(e) => {
-                const selected = equipment.find(eq => eq.id === e.target.value);
-                setSelectedEquipment(selected || null);
-              }}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              <option value="">Select Equipment</option>
-              {equipment.map(eq => (
-                <option key={eq.id} value={eq.id}>
-                  {eq.equipment_id} - {eq.equipment_type}
-                </option>
-              ))}
-            </select>
-          </div>
+          {queryError && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-red-700">{queryError}</p>
+              </div>
+            </div>
+          )}
+          
+          {!queryString.parse(window.location.search).EquipmentNo && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Equipment
+              </label>
+              <select
+                value={selectedEquipment?.id || ''}
+                onChange={(e) => {
+                  const selected = equipment.find(eq => eq.id === e.target.value);
+                  setSelectedEquipment(selected || null);
+                  // Update URL with equipment number
+                  if (selected) {
+                    const newUrl = queryString.stringifyUrl({
+                      url: window.location.pathname,
+                      query: { EquipmentNo: selected.equipment_id }
+                    });
+                    window.history.pushState({}, '', newUrl);
+                  }
+                }}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select Equipment</option>
+                {equipment.map(eq => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.equipment_id} - {eq.equipment_type}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {selectedEquipment && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -208,6 +269,17 @@ export default function UserDashboard() {
                   </h3>
                   <p className="text-sm text-gray-500">{selectedEquipment.equipment_type}</p>
                 </div>
+                {queryString.parse(window.location.search).EquipmentNo && (
+                  <button
+                    onClick={() => {
+                      setSelectedEquipment(null);
+                      window.history.pushState({}, '', window.location.pathname);
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-900 underline"
+                  >
+                    Clear Selection
+                  </button>
+                )}
                 <div className="flex items-center gap-3">
                   {!currentLog ? (
                     <button
